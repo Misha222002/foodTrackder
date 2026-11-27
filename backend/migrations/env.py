@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from food_tracker.core.config import Settings
 from food_tracker.db.base import Base
+from food_tracker.modules.auth import models as auth_models  # noqa: F401
+from food_tracker.modules.users import models as user_models  # noqa: F401
 
 
 def configure(connection=None):

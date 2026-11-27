@@ -16,7 +16,7 @@ async def test_health_contract(database_available):
     session = AsyncMock()
     if not database_available:
         session.execute.side_effect = OperationalError("SELECT 1", {}, Exception("secret DSN"))
-    app = create_app()
+    app = create_app(Settings(mail_worker_enabled=False))
     app.dependency_overrides[get_session] = lambda: session
     async with (
         app.router.lifespan_context(app),
@@ -38,7 +38,7 @@ async def test_health_contract(database_available):
 
 
 def test_openapi_exposes_success_and_error_without_database():
-    schema = create_app().openapi()
+    schema = create_app(Settings(mail_worker_enabled=False)).openapi()
     operation = schema["paths"]["/api/v1/health"]["get"]
     assert operation["operationId"] == "get_health"
     assert set(operation["responses"]) == {"200", "503"}
