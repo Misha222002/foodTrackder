@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { config } from '../config/env'
+import { useStaleRefresh } from './use-stale-refresh'
 import { baseApi } from './base-api'
 import type { components } from './generated/schema'
 
@@ -14,22 +13,6 @@ export const healthApi = baseApi.injectEndpoints({
 
 export function useGetHealthQuery() {
   const query = healthApi.useGetHealthQuery()
-  const { fulfilledTimeStamp, isFetching, refetch } = query
-  useEffect(() => {
-    function checkFreshness() {
-      if (document.visibilityState === 'hidden' || isFetching) return
-      if (!fulfilledTimeStamp || Date.now() - fulfilledTimeStamp >= config.freshnessSeconds * 1000) {
-        void refetch()
-      }
-    }
-    window.addEventListener('focus', checkFreshness)
-    window.addEventListener('online', checkFreshness)
-    document.addEventListener('visibilitychange', checkFreshness)
-    return () => {
-      window.removeEventListener('focus', checkFreshness)
-      window.removeEventListener('online', checkFreshness)
-      document.removeEventListener('visibilitychange', checkFreshness)
-    }
-  }, [fulfilledTimeStamp, isFetching, refetch])
+  useStaleRefresh(query)
   return query
 }

@@ -7,7 +7,7 @@ export function HomePage() {
     <Stack spacing={3}>
       <Box>
         <Typography component="h1" variant="h3" sx={{ fontSize: { xs: '2rem', md: '3rem' }, fontWeight: 700 }}>
-          Питание по плану
+          Ем по плану
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 560 }}>
           Здесь появятся ваши продукты, любимые блюда, план питания и дневник.

@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
@@ -7,6 +8,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      https:
+        existsSync('.certs/localhost.pem') && existsSync('.certs/localhost-key.pem')
+          ? {
+              cert: readFileSync('.certs/localhost.pem'),
+              key: readFileSync('.certs/localhost-key.pem'),
+            }
+          : undefined,
       proxy: {
         '/api': { target: env.API_PROXY_TARGET || 'http://127.0.0.1:8000', changeOrigin: true },
       },
