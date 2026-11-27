@@ -1,6 +1,6 @@
 # Food Tracker
 
-Проект адаптивного приложения для личного планирования питания, дневника и расчётов КБЖУ. Репозиторий пока содержит проектную документацию: приложения, зависимости и миграции не созданы.
+Проект адаптивного приложения для личного планирования питания, дневника и расчётов КБЖУ. Создана основа FastAPI + PostgreSQL и React + TypeScript. Сейчас доступен стартовый экран с проверкой соединения; функциональность питания и аккаунта реализуется по плану.
 
 Актуальные решения согласованы 7 ноября 2026 года.
 
@@ -12,6 +12,85 @@
 - Корневой README описывает назначение репозитория, навигацию и общий порядок работы.
 
 Изменение предметного правила сначала фиксируем в backend/README.md, затем обновляем зависимые ссылки и клиентское поведение. Границы первой версии и дальнейшее развитие описаны в [задачах и этапах](backend/README.md#1-задачи-и-этапы), критерии готовности — в [приёмке backend](backend/README.md#готовность-первой-версии).
+
+## Локальный запуск
+
+Нужны [uv](https://docs.astral.sh/uv/getting-started/installation/), Python 3.12 (uv может скачать его автоматически), Node.js 22.13+ и Docker с Compose для PostgreSQL 17. Вместо Docker можно использовать собственную PostgreSQL 17 и задать её URL в `backend/.env`.
+
+### uv на macOS
+
+Для установки uv через Homebrew и проверки доступности в терминале:
+
+```sh
+brew install --formula uv
+uv --version
+```
+
+Зависимости backend устанавливаются отдельно командой `uv sync --locked` из каталога `backend/`, как описано ниже.
+
+### Docker CLI на macOS
+
+Для запуска контейнеров на macOS используются Docker CLI, Compose и [Colima](https://colima.run/docs/installation/):
+
+```sh
+brew install docker docker-compose colima
+colima start --cpu 2 --memory 2 --disk 20 --vm-type vz --runtime docker
+docker compose version
+```
+
+Homebrew устанавливает Compose как отдельный плагин. Его каталог нужно добавить в `cliPluginsExtraDirs` файла `~/.docker/config.json`, сохраняя остальные настройки; подробности — в [инструкции Homebrew](https://formulae.brew.sh/formula/docker-compose). На настроенном Mac с Apple Silicon уже добавлен `/opt/homebrew/lib/docker/cli-plugins`.
+
+После перезагрузки Mac сначала выполнить `colima start`. Docker CLI и Colima установлены на компьютере, а PostgreSQL проекта запускается из `compose.yaml`. На другом компьютере инструменты Docker устанавливаются отдельно; используется тот же Compose-файл.
+
+### Запуск приложения
+
+Из корня репозитория:
+
+```sh
+docker compose up -d --wait db
+cd backend
+cp .env.example .env
+uv sync --locked
+uv run alembic upgrade head
+uv run uvicorn food_tracker.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Во втором терминале из корня:
+
+```sh
+cd frontend
+cp .env.example .env
+npm ci
+npm run dev
+```
+
+Открыть [приложение](http://127.0.0.1:5173/). При работающей базе на стартовом экране появится «Сервис доступен». Запрос `/api/v1/health` проходит через Vite proxy на backend; MSW по умолчанию выключен. [Документация API](http://127.0.0.1:8000/docs) и [OpenAPI](http://127.0.0.1:8000/openapi.json) доступны на сервере.
+
+Миграции запускаются явно: приложение не создаёт таблицы при старте. Текущая начальная ревизия создаёт только историю Alembic. Предметные таблицы появятся вместе со сценариями. Локальные пароли из примеров предназначены для разработки; PostgreSQL Compose опубликован только на loopback.
+
+Остановка: Ctrl+C в терминалах приложений и `docker compose down` из корня. Данные dev-базы остаются в volume.
+
+Проверить контейнер и открыть SQL-консоль из корня проекта:
+
+```sh
+docker compose ps
+docker compose exec db psql -U food_tracker -d food_tracker
+```
+
+Основная БД доступна на `127.0.0.1:5432`, имя БД, пользователь и локальный пароль — `food_tracker`. Тестовая БД запускается отдельно с профилем `test` на порту `5433`. Остановка только тестовой БД: `docker compose stop db-test`.
+
+## Проверки и обновление контракта
+
+Из корня после установки зависимостей: `make check` (Ruff, pytest, актуальность OpenAPI/типов, TypeScript, ESLint, Vitest, production-сборка). Без `TEST_DATABASE_URL` тест полного цикла миграций явно пропускается. Для полной проверки:
+
+```sh
+docker compose --profile test up -d --wait db-test
+TEST_DATABASE_URL=postgresql://food_tracker_test:food_tracker_test@127.0.0.1:5433/food_tracker_test make check
+```
+
+Тесты создают случайную отдельную БД на тестовом сервере, прогоняют миграции и удаляют только эту БД. Роли нужен `CREATEDB`. Рабочие таблицы в переданной БД не очищаются. Тестовый сервис держит данные в tmpfs.
+
+После изменения DTO: `make api-generate`. В репозитории хранятся `backend/openapi.json` и generated-типы клиента; `make contracts-check` обнаруживает рассинхронизацию. Экспорт не требует запущенной БД. Детальные команды и настройки: [backend](backend/README.md#локальная-разработка) и [frontend](frontend/README.md#локальная-разработка).
 
 ## Порядок разработки
 
